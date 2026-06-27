@@ -14,7 +14,7 @@ renv/cellar/
 renv/staging/
 
 # ── Large binary model artifacts (metadata JSON is committed) ─
-models/artifacts/*.rds
+
 
 # ── Generated logs ──────────────────────────────────────────
 logs/*.md
