@@ -1,0 +1,30 @@
+# ── Secrets ────────────────────────────────────────────────
+.Renviron
+*.Rproj.user
+
+# ── Large data (never commit) ───────────────────────────────
+data/meds_raw/
+data/temp_synth/
+data/local_query_cache.duckdb*
+
+# ── Installed packages (renv restores from renv.lock) ──────
+renv/library/
+renv/local/
+renv/cellar/
+renv/staging/
+
+# ── Large binary model artifacts (metadata JSON is committed) ─
+models/artifacts/*.rds
+
+# ── Generated logs ──────────────────────────────────────────
+logs/*.md
+logs/*.log
+
+# ── R session artifacts ────────────────────────────────────
+.Rhistory
+.RData
+.Rapp.history
+
+# ── OS files ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db

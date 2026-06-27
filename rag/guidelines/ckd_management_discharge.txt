@@ -1,0 +1,28 @@
+SYNTHETIC PORTFOLIO DOCUMENT — NOT FOR CLINICAL USE
+
+Chronic Kidney Disease Discharge and Readmission Prevention Protocol
+
+Section 1: Nephrology Follow-Up Requirements
+Patients with CKD Stage 3b or higher (eGFR < 45) admitted for any cause should
+have nephrology follow-up scheduled within 30 days of discharge. Patients with
+acute-on-chronic kidney disease should have follow-up within 7 days. Ensure
+serum creatinine, BUN, electrolytes, and urinalysis are ordered for the
+follow-up visit before discharge.
+
+Section 2: Medication Management in CKD
+Review all medications for nephrotoxicity before discharge. Avoid NSAIDs,
+nephrotoxic antibiotics, and contrast agents unless benefits clearly outweigh
+risks. Adjust doses of renally-cleared medications for current GFR. Check
+potassium-sparing medications carefully in patients with reduced eGFR.
+
+Section 3: Fluid and Dietary Counseling
+Provide dietary counseling on potassium, phosphorus, and sodium restriction
+appropriate to the patient's CKD stage. Patients with CKD Stage 4 or 5 should
+receive formal renal dietitian consultation before discharge. Document dietary
+education in the medical record.
+
+Section 4: Emergency Return Criteria
+Instruct patients to return to the emergency department for: decreased urine
+output, unexpected weight gain greater than 3 pounds in 24 hours, confusion,
+muscle weakness, or irregular heartbeat — all potential signs of electrolyte
+imbalance or acute decompensation requiring immediate evaluation.

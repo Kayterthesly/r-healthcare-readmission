@@ -1,0 +1,30 @@
+SYNTHETIC PORTFOLIO DOCUMENT — NOT FOR CLINICAL USE
+
+Medication Reconciliation at Hospital Discharge — General Protocol
+
+Section 1: Reconciliation Requirements
+Complete medication reconciliation is required for every patient at discharge.
+The reconciliation must compare: medications on admission, medications changed
+during hospitalization, and planned discharge medications. A pharmacist-led
+reconciliation reduces medication errors at discharge by up to 50% and
+significantly lowers readmission rates attributable to medication errors.
+
+Section 2: High-Risk Medication Classes
+Patients discharged on any of the following require enhanced counseling and
+follow-up: anticoagulants (warfarin, DOACs), insulin and other hypoglycemics,
+immunosuppressants, narrow-therapeutic-index medications (digoxin, lithium,
+phenytoin), and opioids. Document explicit instructions for each high-risk
+medication class.
+
+Section 3: Prescription Provision Before Discharge
+Do not discharge patients with prescriptions unfilled or uncertain. For patients
+with cost concerns, work with the social worker and pharmacy to identify
+patient assistance programs. A patient who cannot afford their discharge
+medications will not take them — this is a leading preventable cause of
+30-day readmission.
+
+Section 4: Documentation Requirements
+The discharge medication list provided to the patient must match the medication
+list provided to the receiving provider. Any discrepancy is a medication
+reconciliation error that must be corrected before discharge. Document the
+name, dose, route, frequency, and duration for every discharge medication.

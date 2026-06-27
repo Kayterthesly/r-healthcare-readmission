@@ -1,0 +1,29 @@
+# ============================================================
+# docker-compose.yml — local MinIO (S3-compatible mock storage)
+# r-healthcare-readmission
+# ============================================================
+# This is LOCAL DEV ONLY. It mimics Cloudflare R2 / AWS S3
+# identically, so the rest of the pipeline (global_config.R,
+# DuckDB httpfs, paws) never knows the difference.
+#
+# When real cloud storage is ready, this file is left alone —
+# only .Renviron values change (CLOUD_ENDPOINT, CLOUD_USE_SSL).
+# ============================================================
+
+services:
+  minio:
+    image: minio/minio
+    container_name: healthcare-rag-minio
+    ports:
+      - "9000:9000"   # S3 API — this is what R/DuckDB talk to
+      - "9001:9001"   # Web console — http://localhost:9001
+    environment:
+      MINIO_ROOT_USER: healthcare_minio_key
+      MINIO_ROOT_PASSWORD: healthcare_minio_secret_2026
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+volumes:
+  minio_data:

@@ -1,0 +1,18 @@
+{
+  "model_version": "v3",
+  "model_type": "glmnet",
+  "training_hash": "dc150d126b828de1ca728b57f69b288a",
+  "chosen_threshold": 0.47,
+  "metrics": {
+    "recall": 0.878,
+    "precision": 0.2165,
+    "f1": 0.3473,
+    "auc_roc": 0.5681,
+    "pr_auc": 0.2359
+  },
+  "approved": true,
+  "clinical_signoff": "PENDING — synthetic data, no clinical sign-off required at this stage",
+  "fairness_report_path": "pending Stage 5",
+  "created_by": "HELLO",
+  "created_at": "2026-06-21T18:38:43"
+}

@@ -1,0 +1,160 @@
+# .github/workflows/ci.yml
+# Healthcare Readmission Forecasting Pipeline — CI/CD
+# ============================================================
+# Stages (per Section 12 governance map):
+#   lint → renv restore → script existence check →
+#   metadata validation → metrics gate →
+#   locked-decisions policy check → unit tests (Stage 9)
+#
+# Does NOT run against MinIO (local Docker not available in CI).
+# Model artifacts (.rds) are not committed to git — only the
+# metadata JSON files (small, human-readable) are checked.
+# ============================================================
+
+name: Healthcare RAG Pipeline CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Setup R ───────────────────────────────────────
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+          use-public-rspm: true
+
+      # ── 3. Restore renv ──────────────────────────────────
+      - name: Restore renv package environment
+        uses: r-lib/actions/setup-renv@v2
+        with:
+          cache-version: 1
+
+      # ── 4. Lint R scripts ────────────────────────────────
+      - name: Lint R scripts
+        run: |
+          Rscript -e "
+            if (!requireNamespace('lintr', quietly=TRUE)) install.packages('lintr')
+            dirs   <- c('r_scripts', 'rag', 'api', 'schemas')
+            files  <- unlist(lapply(dirs[dir.exists(dirs)], list.files,
+                             pattern='\\\\.R$', full.names=TRUE))
+            files  <- c(files, 'global_config.R')
+            files  <- files[file.exists(files)]
+            lints  <- lintr::lint_files(files)
+            n_warn <- length(lints)
+            if (n_warn > 0) {
+              message(n_warn, ' lint warning(s) found (non-blocking in this pipeline):')
+              print(lints)
+            } else {
+              message('Lint check: 0 issues found across ', length(files), ' files.')
+            }
+          "
+
+      # ── 5. Verify required scripts exist ─────────────────
+      - name: Verify required pipeline scripts
+        run: |
+          Rscript -e "
+            required <- c(
+              'global_config.R',
+              'r_scripts/governance_helpers.R',
+              'r_scripts/01_synthetic_mimic_generator.R',
+              'r_scripts/02_ingest_and_cast.R',
+              'r_scripts/03_features.R',
+              'r_scripts/04_train_models.R',
+              'r_scripts/05_explainability_fairness.R',
+              'r_scripts/08_monitoring.R',
+              'schemas/canonical_omop_schemas.R',
+              'rag/rag_indexing.R',
+              'rag/llm_wrapper.R',
+              'api/plumber.R'
+            )
+            missing <- required[!file.exists(required)]
+            if (length(missing) > 0) stop('Missing required scripts: ', paste(missing, collapse=', '))
+            message('Script check PASS: all ', length(required), ' required scripts present')
+          "
+
+      # ── 6. Validate model metadata JSON ──────────────────
+      - name: Validate model metadata JSON files
+        run: |
+          Rscript -e "
+            library(jsonlite)
+            meta_dir <- 'models/artifacts'
+            if (!dir.exists(meta_dir)) {
+              message('models/artifacts not found — skipping (pre-training run)')
+              quit('no', 0)
+            }
+            meta_files <- list.files(meta_dir, pattern='metadata_.*\\\\.json', full.names=TRUE)
+            if (length(meta_files) == 0) {
+              message('No metadata JSON files found — skipping (pre-training run)')
+              quit('no', 0)
+            }
+            required_fields <- c('model_version','model_type','training_hash',
+                                  'chosen_threshold','metrics','approved')
+            for (f in meta_files) {
+              meta    <- fromJSON(f)
+              missing <- setdiff(required_fields, names(meta))
+              if (length(missing) > 0) stop(basename(f), ' missing fields: ', paste(missing, collapse=','))
+            }
+            message('Metadata JSON check PASS: ', length(meta_files), ' file(s) validated')
+          "
+
+      # ── 7. Metrics gate (recall >= 0.85) ─────────────────
+      - name: Metrics gate — Recall >= 0.85
+        run: |
+          Rscript -e "
+            library(jsonlite)
+            meta_files <- list.files('models/artifacts', pattern='metadata_.*\\\\.json', full.names=TRUE)
+            if (length(meta_files) == 0) {
+              message('Metrics gate: no metadata found — skipping')
+              quit('no', 0)
+            }
+            failures <- character(0)
+            for (f in meta_files) {
+              meta   <- fromJSON(f)
+              recall <- meta[['metrics']][['recall']]
+              if (!isTRUE(meta[['approved']])) next   # unapproved models skip gate
+              if (!is.null(recall) && recall < 0.85) {
+                failures <- c(failures, sprintf('%s recall=%.4f', basename(f), recall))
+              }
+            }
+            if (length(failures) > 0) stop('METRICS GATE FAILED: ', paste(failures, collapse='; '))
+            message('Metrics gate PASS: all approved models satisfy Recall >= 0.85')
+          "
+
+      # ── 8. Locked decisions policy check ─────────────────
+      - name: Policy check — locked decisions compliance
+        run: |
+          Rscript -e "
+            doc <- 'docs/00_locked_decisions.md'
+            if (!file.exists(doc)) stop('Policy check FAIL: locked decisions doc missing')
+            content      <- paste(readLines(doc, warn=FALSE), collapse='\n')
+            required_sec <- c('Section 4', 'Section 12', 'Section 13')
+            missing      <- required_sec[!sapply(required_sec, function(s) grepl(s, content, fixed=TRUE))]
+            if (length(missing) > 0) stop('Policy check FAIL: missing sections: ', paste(missing, collapse=', '))
+            message('Policy check PASS: all required sections present in locked decisions doc')
+          "
+
+      # ── 9. Unit tests (Stage 9 fills in) ─────────────────
+      - name: Run unit tests
+        run: |
+          Rscript -e "
+            test_dir <- 'tests/unit'
+            if (!dir.exists(test_dir) || length(list.files(test_dir, pattern='\\\\.R$')) == 0) {
+              message('Unit tests: directory empty — Stage 9 pending')
+              quit('no', 0)
+            }
+            library(testthat)
+            test_dir(test_dir, reporter='progress')
+          "

@@ -1,0 +1,34 @@
+SYNTHETIC PORTFOLIO DOCUMENT — NOT FOR CLINICAL USE
+
+Safe Care Transitions and Continuity of Care Protocol
+
+Section 1: Discharge Summary Requirements
+A complete discharge summary must be available to the receiving provider within
+24 hours of discharge. The summary must include: admitting diagnosis, hospital
+course summary, procedures performed, test results requiring follow-up,
+discharge medications with changes highlighted, pending results and responsible
+follow-up provider, follow-up appointments scheduled, and patient education
+provided. Incomplete discharge summaries are a leading cause of post-discharge
+complications and avoidable readmissions.
+
+Section 2: Care Coordination for Complex Patients
+Patients with multiple conditions, multiple providers, or significant functional
+limitations require formal care coordination. Assign a care coordinator or case
+manager for: patients with 3 or more chronic conditions, patients requiring
+home health services, patients with new diagnoses requiring ongoing management,
+and patients with history of readmission.
+
+Section 3: Direct Communication with Receiving Providers
+For high-risk discharges, direct verbal communication between the discharging
+physician and the receiving primary care provider significantly reduces
+readmission rates compared to written documentation alone. Document all direct
+communications. Do not assume the receiving provider has read the discharge
+summary.
+
+Section 4: Patient Understanding Assessment
+Before discharge, use a teach-back method to confirm the patient can accurately
+describe: their primary diagnosis, the name and purpose of each discharge
+medication, their follow-up appointment date and location, and three signs
+that should prompt them to seek emergency care. Document teach-back assessment
+results. Patients who cannot complete teach-back require additional education
+or caregiver support.

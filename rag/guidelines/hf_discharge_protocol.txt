@@ -1,0 +1,32 @@
+SYNTHETIC PORTFOLIO DOCUMENT — NOT FOR CLINICAL USE
+
+Heart Failure 30-Day Readmission Prevention Protocol
+
+Section 1: Discharge Criteria
+Patients with heart failure should meet the following before discharge: clinical
+stability for 24 hours (no IV diuretics, stable weight, stable vital signs),
+resting heart rate below 100 bpm, systolic blood pressure above 80 mmHg,
+ambulatory oxygen saturation above 92%, and documented patient education
+completion. Premature discharge before achieving clinical stability is a leading
+cause of 30-day readmission.
+
+Section 2: Medication Reconciliation at Discharge
+All patients should be discharged on evidence-based heart failure therapies
+including ACE inhibitor or ARB, beta-blocker, and aldosterone antagonist unless
+contraindicated. Review and reconcile all home medications before discharge.
+Provide written medication list to patient. Confirm the patient can afford and
+access all discharge medications before leaving the facility.
+
+Section 3: Follow-Up Appointment Scheduling
+Schedule a follow-up appointment within 7 days of discharge — not 30 days.
+Studies consistently show that patients with a scheduled follow-up within 7 days
+have significantly lower 30-day readmission rates. Confirm the appointment date
+and location in writing before the patient leaves. Provide an after-hours
+contact number for the first 72 hours post-discharge.
+
+Section 4: Patient Education Requirements
+Document that the patient received education on: daily weight monitoring
+(alert provider for 2-pound gain in one day or 5-pound gain in one week),
+fluid restriction, sodium restriction, medication purpose and side effects,
+and when to seek emergency care. Education should be provided to a family
+member or caregiver when possible.

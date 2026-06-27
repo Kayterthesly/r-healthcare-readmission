@@ -1,0 +1,18 @@
+{
+  "model_version": "v1",
+  "model_type": "xgboost",
+  "training_hash": "6eeb3687ea484a8a45a6fb3e073e4946",
+  "chosen_threshold": 0.33,
+  "metrics": {
+    "recall": 0.8731,
+    "precision": 0.2069,
+    "f1": 0.3346,
+    "auc_roc": 0.5453,
+    "pr_auc": 0.2236
+  },
+  "approved": true,
+  "clinical_signoff": "PENDING — synthetic data, no clinical sign-off required at this stage",
+  "fairness_report_path": "pending Stage 5",
+  "created_by": "HELLO",
+  "created_at": "2026-06-21T08:06:28"
+}

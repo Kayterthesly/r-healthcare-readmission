@@ -1,0 +1,29 @@
+SYNTHETIC PORTFOLIO DOCUMENT — NOT FOR CLINICAL USE
+
+Post-Sepsis Discharge and Recovery Protocol
+
+Section 1: Post-Sepsis Syndrome Awareness
+A significant proportion of sepsis survivors experience Post-Sepsis Syndrome:
+cognitive impairment, fatigue, sleep disturbance, anxiety, depression, and
+increased susceptibility to future infections. Screen for these symptoms before
+discharge and document findings. Inform the patient and family that these
+symptoms are common, expected, and treatable.
+
+Section 2: Antibiotic Completion and Infection Source Control
+Ensure all antibiotic courses are completed as prescribed. Do not discharge
+patients who still require IV antibiotics without clear discharge antibiotic
+plan and follow-up. Document the source of infection and confirm the source
+has been adequately controlled before discharge.
+
+Section 3: Functional Assessment and Rehabilitation Referral
+Assess functional status compared to pre-sepsis baseline before discharge.
+Patients with significant functional decline should receive physical therapy
+evaluation and referral to inpatient or outpatient rehabilitation. Document
+the functional status assessment.
+
+Section 4: Follow-Up Care Coordination
+Schedule primary care follow-up within 7 days of discharge. Provide a
+comprehensive discharge summary to the receiving primary care provider,
+including: precipitating infection source, organisms isolated, antimicrobials
+used, peak organ dysfunction reached, and ongoing recovery needs. Patients
+with ICU stays should be referred to a post-ICU clinic when available.

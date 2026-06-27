@@ -1,0 +1,28 @@
+SYNTHETIC PORTFOLIO DOCUMENT — NOT FOR CLINICAL USE
+
+Acute Myocardial Infarction Secondary Prevention and Discharge Protocol
+
+Section 1: Evidence-Based Discharge Medications
+All patients discharged after acute MI without contraindications should receive:
+dual antiplatelet therapy (aspirin + P2Y12 inhibitor), high-intensity statin
+therapy, ACE inhibitor or ARB, and beta-blocker. Document the rationale for
+any omissions. Verify the patient understands the critical importance of not
+stopping antiplatelet therapy without consulting their cardiologist.
+
+Section 2: Cardiac Rehabilitation Referral
+Cardiac rehabilitation reduces post-MI mortality by up to 25% and readmission
+rates significantly. Refer all eligible patients to cardiac rehabilitation before
+discharge. Ensure the referral is submitted and confirmed. Do not rely on the
+patient to self-refer.
+
+Section 3: Risk Factor Modification Counseling
+Before discharge, document counseling on: smoking cessation (prescribe
+pharmacotherapy for all smokers), blood pressure management, diabetes
+management if applicable, dietary modification, physical activity guidance,
+and weight management. Provide written materials.
+
+Section 4: Follow-Up Scheduling
+Schedule cardiology follow-up within 14 days of discharge for all STEMI
+patients and within 7 days for high-risk NSTEMI patients. Ensure the patient
+has a named cardiologist contact and after-hours instructions before leaving
+the hospital.
