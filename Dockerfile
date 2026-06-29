@@ -1,5 +1,10 @@
 # Healthcare Readmission Pipeline — Railway Deployment
-# rocker/r-ver:4.4.2 = Ubuntu 22.04 (jammy) — stable, well-tested
+# No renv: installs packages directly from Posit PM binary mirror.
+# renv.lock was generated on Windows R 4.5.2 and causes renv::restore()
+# to fail on Linux even with RENV_CONFIG_REPOS_OVERRIDE, because renv
+# detects the R version mismatch and Windows-specific package metadata.
+# Direct installation is more reliable for cross-platform Docker builds.
+
 FROM rocker/r-ver:4.4.2
 
 # System libraries
@@ -12,34 +17,35 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# ── KEY FIX 1: Override renv repos to Posit Package Manager binary mirror.
-# This makes renv::restore() fetch pre-compiled .tar.gz binaries (~2 min)
-# instead of compiling 197 packages from source (~25 min, exceeds timeout).
-# RENV_CONFIG_REPOS_OVERRIDE takes precedence over renv.lock repository URLs.
-ENV RENV_CONFIG_REPOS_OVERRIDE="https://packagemanager.posit.co/cran/__linux__/jammy/latest"
+# Use Posit Package Manager binary mirror for Ubuntu 22.04 (jammy)
+# Pre-built binaries = seconds per package instead of minutes from source
+RUN echo 'options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' \
+    >> /usr/local/lib/R/etc/Rprofile.site
 
-# ── KEY FIX 2: renv.lock was generated on R 4.5.2 (Windows); Docker runs
-# 4.4.2. Setting this skips the version-mismatch abort so restore proceeds.
-ENV RENV_CONFIG_R_VERSION_CHECK=FALSE
+# ── Group 1: Foundation ──────────────────────────────────────
+# Cached as its own layer — only reinstalls if this group changes
+RUN Rscript -e "install.packages(c( \
+    'here','logger','uuid','digest','jsonlite', \
+    'tibble','dplyr','tidyr','purrr','stringr','lubridate' \
+))"
 
-# ── Standard renv opt-in required for non-interactive restore
-ENV RENV_CONSENT=1
+# ── Group 2: Database + cloud storage ───────────────────────
+RUN Rscript -e "install.packages(c('DBI','duckdb','arrow','paws'))"
 
-# Copy renv infrastructure first (separate Docker layer — cached if unchanged)
-COPY renv.lock renv.lock
-COPY renv/activate.R renv/activate.R
-COPY renv/.gitignore renv/.gitignore
-COPY renv/settings.json renv/settings.json
-COPY .Rprofile .Rprofile
+# ── Group 3: ML core ─────────────────────────────────────────
+RUN Rscript -e "install.packages(c('Matrix','glmnet','xgboost','ROSE'))"
 
-# Install renv then restore all packages from Posit PM binaries
-RUN R -e "install.packages('renv', repos = 'https://packagemanager.posit.co/cran/__linux__/jammy/latest')"
-RUN R -e "renv::restore(prompt = FALSE)"
+# ── Group 4: tidymodels (components, not meta-package) ───────
+RUN Rscript -e "install.packages(c( \
+    'hardhat','parsnip','recipes','rsample', \
+    'workflows','tune','yardstick','broom','generics' \
+))"
 
-# Copy remaining project files
+# ── Group 5: API + LLM ───────────────────────────────────────
+RUN Rscript -e "install.packages(c('plumber','ellmer','httr2'))"
+
+# Copy project files (after package install layers are cached)
 COPY . .
-
-# Runtime directories
 RUN mkdir -p /app/data /app/logs
 
 EXPOSE 8080
@@ -47,4 +53,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=3 \
   CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-CMD Rscript -e "source('global_config.R'); pr <- plumber::plumb('api/plumber.R'); pr\$run(host='0.0.0.0', port=as.integer(Sys.getenv('PORT', '8080')))"
+CMD Rscript -e "source('global_config.R'); \
+    pr <- plumber::plumb('api/plumber.R'); \
+    pr\$run(host='0.0.0.0', port=as.integer(Sys.getenv('PORT', '8080')))"
