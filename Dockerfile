@@ -17,6 +17,11 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Defense in depth: disable renv's autoloader even if .Rprofile
+# somehow ends up in the image — belt-and-suspenders against the
+# .libPaths() override issue described above.
+ENV RENV_CONFIG_AUTOLOADER_ENABLED=FALSE
+
 # Use Posit Package Manager binary mirror for Ubuntu 22.04 (jammy)
 # Pre-built binaries = seconds per package instead of minutes from source
 RUN echo 'options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"))' \

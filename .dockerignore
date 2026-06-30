@@ -1,0 +1,25 @@
+# ── renv: local dev uses this, Docker bypasses it entirely ──
+# .Rprofile sources renv/activate.R, which reconfigures .libPaths()
+# to point ONLY at renv/library/ — hiding packages installed
+# directly via install.packages() in the Dockerfile. Excluding
+# these from the build context means R never sources renv at
+# container startup; local development is completely unaffected
+# since these files stay in the actual repo, just not copied here.
+.Rprofile
+renv/
+renv.lock
+
+# ── Secrets: Railway injects these as real env vars instead ──
+.Renviron
+
+# ── Never needed inside the container ────────────────────────
+.git
+.gitignore
+data/local_query_cache.duckdb
+data/meds_raw/
+data/temp_synth/
+logs/*.md
+notes/
+docs/
+*.Rproj
+.Rproj.user
