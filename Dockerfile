@@ -45,6 +45,10 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=3 \
   CMD curl -f http://localhost:${PORT:-8080}/health || exit 1
 
-CMD Rscript -e "source('global_config.R'); \
+CMD Rscript -e " \
+    setwd('/app'); \
+    source('global_config.R'); \
+    source('r_scripts/governance_helpers.R'); \
+    source('rag/llm_wrapper.R'); \
     pr <- plumber::plumb('api/plumber.R'); \
     pr\$run(host='0.0.0.0', port=as.integer(Sys.getenv('PORT', '8080')))"

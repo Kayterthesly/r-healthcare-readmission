@@ -20,6 +20,15 @@
 library(here); library(DBI); library(dplyr); library(tidymodels)
 library(uuid); library(digest); library(logger); library(jsonlite)
 
+# ── WD fix for Railway: plumber::plumb() changes WD to /app/api/
+# setwd + here::here() ensures all source() calls resolve from project root
+if (Sys.getenv("RAILWAY_ENVIRONMENT", "") != "" || !interactive()) {
+  setwd(dirname(here::here()))
+}
+
+# Ensure WD is project root regardless of how plumber loads this file
+if (file.exists("/app")) setwd("/app")
+
 source(here::here("global_config.R"))
 source(here::here("r_scripts", "governance_helpers.R"))
 source(here::here("rag", "llm_wrapper.R"))
