@@ -31,7 +31,7 @@ RUN Rscript -e "install.packages(c('DBI','duckdb','arrow','paws'))"
 RUN Rscript -e "install.packages(c('Matrix','glmnet','xgboost','ROSE'))"
 
 RUN Rscript -e "install.packages(c( \
-    'hardhat','parsnip','recipes','rsample', \
+    'tidymodels','hardhat','parsnip','recipes','rsample', \
     'workflows','tune','yardstick','broom','generics' \
 ))"
 

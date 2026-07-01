@@ -17,7 +17,8 @@
 # Every response carries trace_id and model_version.
 # ============================================================
 
-library(here); library(DBI); library(dplyr); library(tidymodels)
+library(here); library(DBI); library(dplyr); library(recipes)   # bake() for preprocessing
+library(parsnip)   # predict() for model inference
 library(uuid); library(digest); library(logger); library(jsonlite)
 
 # ── WD fix for Railway: plumber::plumb() changes WD to /app/api/
