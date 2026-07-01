@@ -13,6 +13,7 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
     libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev \
     zlib1g-dev libgit2-dev curl \
+    libicu-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
