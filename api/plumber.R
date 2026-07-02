@@ -58,6 +58,18 @@ xgb_fit        <- model_bundle$fit
 recipe_prepped <- model_bundle$recipe
 log_info("[API] xgboost_{MODEL_VERSION} loaded at startup")
 
+# Warm up B2/DuckDB connection at startup so first /predict call
+# doesn't cold-start the httpfs extension (avoids 30s timeout)
+tryCatch({
+  con_warm <- get_db_connection()
+  register_cloud_tables(con_warm)
+  n_warm <- DBI::dbGetQuery(con_warm, "SELECT COUNT(*) n FROM features_v1")$n
+  close_db_connection(con_warm)
+  log_info("[API] B2 connection warm — features_v1 has {n_warm} rows")
+}, error = function(e) {
+  log_warn("[API] B2 warm-up failed (non-fatal): {conditionMessage(e)}")
+})
+
 # ── Helpers ──────────────────────────────────────────────────
 
 get_patient_features <- function(hadm_id_val) {
