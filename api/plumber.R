@@ -70,6 +70,25 @@ tryCatch({
   log_warn("[API] B2 warm-up failed (non-fatal): {conditionMessage(e)}")
 })
 
+# Rebuild RAG index if rag_chunks missing (Railway fresh container — DuckDB is gitignored)
+tryCatch({
+  con_rag  <- get_db_connection()
+  n_chunks <- tryCatch(
+    DBI::dbGetQuery(con_rag, "SELECT COUNT(*) n FROM rag_chunks")$n,
+    error = function(e) 0L
+  )
+  close_db_connection(con_rag)
+  if (n_chunks < 16) {
+    log_info("[API] rag_chunks empty (N={n_chunks}) — rebuilding RAG index...")
+    source(here::here("rag", "rag_indexing.R"))
+    log_info("[API] RAG index rebuilt: {n_chunks} → 16 chunks")
+  } else {
+    log_info("[API] RAG index ready: {n_chunks} chunks")
+  }
+}, error = function(e) {
+  log_warn("[API] RAG index rebuild failed (non-fatal): {conditionMessage(e)}")
+})
+
 # ── Helpers ──────────────────────────────────────────────────
 
 get_patient_features <- function(hadm_id_val) {

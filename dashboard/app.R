@@ -9,10 +9,13 @@ monitoring_text <- tryCatch(
   paste(readLines("data/latest_monitoring_report.md", warn=FALSE), collapse="\n"),
   error = function(e) "Monitoring report unavailable.")
 
-call_api <- function(path) {
+call_api <- function(path, timeout_sec = 60) {
   tryCatch({
-    resp <- request(paste0(RAILWAY_URL, path)) |> req_timeout(60) |> req_perform()
-    resp_body_json(resp)
+    resp <- request(paste0(RAILWAY_URL, path)) |>
+      req_method("POST") |>
+      req_timeout(timeout_sec) |>
+      req_perform()
+    resp_body_json(resp, simplifyVector = TRUE)
   }, error = function(e) NULL)
 }
 
@@ -126,11 +129,13 @@ server <- function(input, output, session) {
   output$txt_mon <- renderText(monitoring_text)
   
   result <- eventReactive(input$btn_run, {
-    hadm <- as.integer(input$sel_hadm)
+    hadm     <- as.integer(input$sel_hadm)
+    icd_enc  <- utils::URLencode(input$sel_icd, reserved = TRUE)
     list(
       p = call_api(paste0("/predict?hadm_id=", hadm)),
       e = call_api(paste0("/explain?hadm_id=", hadm)),
-      r = call_api(paste0("/rag/summary?hadm_id=", hadm, "&icd_families=", input$sel_icd))
+      r = call_api(paste0("/rag/summary?hadm_id=", hadm,
+                          "&icd_families=", icd_enc), timeout_sec = 120)
     )
   })
   
@@ -156,26 +161,63 @@ server <- function(input, output, session) {
   })
   
   output$plt_drivers <- renderPlotly({
-    req(result()); e <- result()$e
-    if(is.null(e)) return(plotly_empty())
-    df <- map_dfr(e$explanation, ~data.frame(feature=.x$feature, delta=as.numeric(.x$delta))) %>%
-      arrange(desc(abs(delta)))
-    plot_ly(df, x=~delta, y=~reorder(feature,abs(delta)), type="bar", orientation="h",
-            marker=list(color=ifelse(df$delta>0,"#e74c3c","#27ae60")),
-            text=~paste0(ifelse(delta>0,"+",""),round(delta,3)), textposition="outside") %>%
-      layout(xaxis=list(title="Delta from median"), yaxis=list(title=""),
-             margin=list(l=160), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    req(result())
+    e <- result()$e
+    if (is.null(e)) return(plotly_empty() %>% layout(title="Explain API unavailable"))
+    if (is.null(e$explanation)) return(plotly_empty() %>% layout(title="No explanation data"))
+    
+    tryCatch({
+      # Build a clean 2-column data.frame regardless of httr2 parsing structure
+      expl <- e$explanation
+      if (is.data.frame(expl)) {
+        df <- data.frame(
+          feature = as.character(expl$feature),
+          delta   = as.numeric(expl$delta),
+          stringsAsFactors = FALSE
+        )
+      } else {
+        df <- data.frame(
+          feature = sapply(expl, function(x) as.character(x$feature)),
+          delta   = sapply(expl, function(x) as.numeric(x$delta)),
+          stringsAsFactors = FALSE
+        )
+      }
+      df <- df[order(abs(df$delta), decreasing = TRUE), ]
+      df$label <- paste0(ifelse(df$delta >= 0, "+", ""), round(df$delta, 3))
+      
+      plot_ly(df,
+              x = ~delta,
+              y = ~factor(feature, levels = feature[order(abs(delta))]),
+              type = "bar", orientation = "h",
+              marker = list(color = ifelse(df$delta >= 0, "#e74c3c", "#27ae60")),
+              text = ~label, textposition = "outside") %>%
+        layout(
+          xaxis = list(title = "Delta from population median (normalized)"),
+          yaxis = list(title = ""),
+          margin = list(l = 180),
+          paper_bgcolor = "rgba(0,0,0,0)",
+          plot_bgcolor  = "rgba(0,0,0,0)"
+        )
+    }, error = function(err) {
+      plotly_empty() %>% layout(title = paste("Chart error:", conditionMessage(err)))
+    })
   })
   
   output$ui_rag <- renderUI({
     req(result()); r <- result()$r
-    if(is.null(r)) return(div(style="color:#888;padding:20px;","RAG summary unavailable"))
+    if (is.null(r) || is.null(r$summary)) {
+      return(div(style="color:#888;padding:20px;",
+                 "RAG summary unavailable — Railway may still be warming up. Wait 30s and try again."))
+    }
+    summary_text <- if (length(r$summary) > 1) r$summary[1] else r$summary
+    cit <- paste(unlist(r$citations), collapse=", ")
+    tid <- if (!is.null(r$trace_id)) r$trace_id[1] else "n/a"
     tagList(
       p(style="background:#f8f9fa;padding:15px;border-left:4px solid #3c8dbc;border-radius:4px;
-               font-family:monospace;white-space:pre-wrap;font-size:0.9em;", r$summary),
+             font-family:monospace;white-space:pre-wrap;font-size:0.9em;", summary_text),
       hr(),
-      strong("Guidelines: "), span(paste(unlist(r$citations),collapse=", "), style="color:#3c8dbc;"), br(),
-      tags$small(style="color:#888;", paste0("trace_id: ", r$trace_id))
+      strong("Guidelines: "), span(cit, style="color:#3c8dbc;"), br(),
+      tags$small(style="color:#888;", paste0("trace_id: ", tid))
     )
   })
   
