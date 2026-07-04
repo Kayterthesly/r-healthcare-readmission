@@ -198,7 +198,7 @@ generate_discharge_summary <- function(
     tryCatch({
       chat         <- ELLMER_GEMINI_FN(
         system_prompt = "You are a clinical decision support assistant specializing in hospital readmission prevention. Be concise, cite your sources, and focus on actionable recommendations.",
-        model         = "gemini-2.0-flash"
+        model = "gemini-1.5-flash"
       )
       raw_response  <- chat$chat(prompt)
       response_hash <- digest::digest(raw_response)
