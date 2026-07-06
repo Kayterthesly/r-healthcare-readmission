@@ -1,417 +1,433 @@
+<!-- HEADER BADGES -->
+<div align="center">
+
 # 🏥 Healthcare Readmission Forecasting Pipeline
 
-`Version: 1.9.0` | `Status: ✅ COMPLETE — All 9 Stages Verified`
+[![R](https://img.shields.io/badge/Built_with-R_4.5.2-276DC3?style=for-the-badge&logo=r&logoColor=white)](https://www.r-project.org/)
+[![Railway](https://img.shields.io/badge/API-Railway-0B0D0E?style=for-the-badge&logo=railway&logoColor=white)](https://r-healthcare-readmission-production.up.railway.app/health)
+[![shinyapps.io](https://img.shields.io/badge/Dashboard-shinyapps.io-4E9AF1?style=for-the-badge&logo=shiny&logoColor=white)](https://e9yw5n-kayterthesly.shinyapps.io/healthcare-readmission-pipeline/)
+[![Backblaze B2](https://img.shields.io/badge/Storage-Backblaze_B2-E05B26?style=for-the-badge)](https://www.backblaze.com/b2/cloud-storage.html)
+[![GitHub Actions](https://img.shields.io/badge/CI/CD-GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/Kayterthesly/r-healthcare-readmission/actions)
+[![Tests](https://img.shields.io/badge/Tests-71_Passing-27ae60?style=for-the-badge&logo=checkmarx&logoColor=white)]()
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)]()
 
-**Author:** Kingsley Akenu (@Kayterthesly — KAIZEN 改善)
-**Location:** Lagos, Nigeria
-**Data:** MIMIC-IV MEDS Demo (100 pts) → synthpop → 15,000 pts → S3-compatible object storage
-**Stack:** R · DuckDB · MinIO · MIMIC-IV MEDS · synthpop · tidymodels · ellmer · plumber · testthat
+**A production-grade, end-to-end ML pipeline that predicts 30-day hospital readmission risk, retrieves evidence-based clinical guidelines via RAG, and serves everything through a live REST API and interactive dashboard.**
 
----
+[🌐 Live Dashboard](https://e9yw5n-kayterthesly.shinyapps.io/healthcare-readmission-pipeline/) • [⚡ Live API](https://r-healthcare-readmission-production.up.railway.app/health) • [📂 GitHub](https://github.com/Kayterthesly/r-healthcare-readmission)
 
-## Project Overview
+> ⚠️ **FOR PORTFOLIO DEMONSTRATION ONLY — NOT FOR CLINICAL USE.**  
+> Model trained on 100-patient synthetic data. AUC-ROC 0.566 honestly disclosed.
 
-A production-grade, auditable, end-to-end healthcare pipeline that:
-
-- Predicts 30-day hospital readmission risk from structured EHR data
-- Uses RAG to retrieve clinical guidelines and generate per-patient discharge recommendations with cited sources
-- Exposes a REST API with full governance audit trails on every call
-- Validates its own governance compliance with a policy check and 71-test suite on every CI push
-- Remains clinician-review only — supports decisions, never makes them
+</div>
 
 ---
 
-## Business Problem
+## 📋 Table of Contents
 
-Hospital readmission within 30 days is a measurable quality failure costing
-$15,000–$20,000 per unnecessary readmission. This pipeline identifies
-high-risk patients at discharge and gives clinicians specific, cited guidance
-to prevent those readmissions — with every prediction traceable to its input,
-its model version, and its audit log entry.
+- [Business Problem](#-business-problem)
+- [Live Demo](#-live-demo)
+- [Architecture](#-architecture)
+- [Pipeline Stages](#-pipeline-stages)
+- [Model Performance](#-model-performance)
+- [Key Findings](#-key-findings-honestly-disclosed)
+- [Tech Stack](#-tech-stack)
+- [API Reference](#-api-reference)
+- [Governance Layer](#-governance-layer)
+- [Testing](#-testing)
+- [Run Locally](#-run-locally)
+- [Deployment](#-deployment)
+- [Author](#-author)
 
 ---
 
-## Architecture Flow
+## 💡 Business Problem
+
+Hospital readmission within 30 days costs **$15,000–$20,000 per unnecessary event** and is a key quality indicator monitored by CMS and insurance providers. This pipeline:
+
+- **Flags high-risk patients** at discharge using structured EHR data
+- **Explains each prediction** with the top factors that drove the risk score
+- **Retrieves relevant clinical guidelines** for the patient's specific conditions via RAG
+- **Generates cited discharge recommendations** for clinical review
+- **Logs every decision** with a full governance audit trail (trace_id, model version, input hash)
+
+---
+
+## 🌐 Live Demo
+
+| Service | URL | Details |
+|---------|-----|---------|
+| 📊 **Interactive Dashboard** | [shinyapps.io](https://e9yw5n-kayterthesly.shinyapps.io/healthcare-readmission-pipeline/) | 5 tabs: Overview · Patient Risk · Model Performance · Fairness · Governance |
+| ⚡ **REST API** | [Railway](https://r-healthcare-readmission-production.up.railway.app/health) | 4 endpoints: /health · /predict · /explain · /rag/summary |
+| 💾 **Object Storage** | Backblaze B2 | 9 Parquet files, 82 MB, S3-compatible |
+| 🔧 **Source Code** | [GitHub](https://github.com/Kayterthesly/r-healthcare-readmission) | Public, full history |
+
+### Quick API Test
+
+```bash
+# Health check
+curl https://r-healthcare-readmission-production.up.railway.app/health
+
+# Live prediction (returns risk score, tier, trace_id, top drivers)
+curl -X POST "https://r-healthcare-readmission-production.up.railway.app/predict?hadm_id=800040634"
+```
+
+---
+
+## 🏗️ Architecture
 
 ```
-MIMIC-IV MEDS demo (100 real patients, PhysioNet)
-  ↓ Stage 1: synthpop synthesis → 15,000 patients
-  ↓ Stage 2: Canonical casting + referential integrity
-  ↓ Stage 3: Feature engineering (DuckDB SQL on MinIO Parquet)
-  ↓ Stage 4: XGBoost + glmnet training (tidymodels, Recall ≥ 0.85)
-  ↓ Stage 5: Permutation importance + fairness stratification
-  ↓ Stage 6: TF-IDF RAG (40/30/30 hybrid) + ellmer/Gemini
-  ↓ Stage 7: Plumber REST API (4 endpoints, trace_id + audit)
-  ↓ Stage 8: Monitoring + GitHub Actions CI + policy checks
-  ↓ Stage 9: testthat suite (71 tests, 0 failures)
+┌─────────────────────────────────────────────────────────────────────┐
+│                    DATA LAYER (Backblaze B2)                         │
+│  syn_person · syn_visit · syn_condition · syn_measurement            │
+│  canonical_* (4 tables) · features_v1                               │
+└─────────────────────┬───────────────────────────────────────────────┘
+                      │ DuckDB + httpfs (SQL over Parquet)
+                      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    INFERENCE LAYER (Railway)                          │
+│                                                                       │
+│  GET  /health      → liveness + model version                        │
+│  POST /predict     → XGBoost v3 risk score + top drivers             │
+│  POST /explain     → per-feature delta vs training median            │
+│  POST /rag/summary → TF-IDF retrieval + Gemini discharge rec         │
+│                                                                       │
+│  Every call: trace_id stamped · predictions_audit written             │
+└─────────────────────┬───────────────────────────────────────────────┘
+                      │ httr2 POST calls
+                      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                  PRESENTATION LAYER (shinyapps.io)                   │
+│  Pipeline Overview · Patient Risk · Model Performance                 │
+│  Fairness Analysis · Governance Monitor                               │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                  GOVERNANCE LAYER (DuckDB, 8 tables)                 │
+│  ingest_metadata · feature_registry · model_registry                 │
+│  fairness_reports · rag_chunks · rag_index_metadata                  │
+│  llm_call_log · predictions_audit                                    │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                  CI/CD LAYER (GitHub Actions)                         │
+│  lint → renv restore → script check → metadata validation           │
+│  recall gate (≥0.85) → decisions policy → unit tests               │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## API Endpoints
+## 📦 Pipeline Stages
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | Liveness check |
-| POST | `/predict` | Risk score + top drivers + trace_id. Writes `predictions_audit`. |
-| POST | `/explain` | Per-feature explanation with deltas vs. training medians |
-| POST | `/rag/summary` | RAG-cited discharge recommendation (Gemini or template fallback) |
-
-Start: `source("api/run_api.R")` in a separate R session.
-All responses carry `trace_id`, `model_version`, and a clinical disclaimer.
-
----
-
-## Stage Status
-
-| Stage | Name | Status |
-|-------|------|--------|
-| 0 | Workspace Setup | ✅ Complete |
-| 1 | Synthetic MIMIC-IV Dataset | ✅ Complete (v2 — severity-linked) |
-| 2 | Ingest & Canonical Casting | ✅ Complete |
-| 3 | Feature Engineering | ✅ Complete (v3 — continuous severity) |
-| 4 | Modeling & Evaluation | ✅ Complete (weak-signal finding disclosed) |
-| 5 | Explainability & Clinical Validation | ✅ Complete |
-| 6 | RAG Retrieval & LLM Wrapper | ✅ Complete |
-| 7 | API & Deployment | ✅ Complete |
-| 8 | Observability & CI/CD | ✅ Complete |
-| 9 | Testing Matrix & Gating | ✅ Complete — 71 tests, 0 failures |
+| Stage | Name | Status | Key Output |
+|-------|------|--------|------------|
+| 0 | Workspace & Environment | ✅ | `renv.lock`, `global_config.R`, MinIO/B2 connection |
+| 1 | Synthetic MIMIC-IV Dataset | ✅ | 15,000 patients, 4 tables, severity-linked (v2) |
+| 2 | Ingest & Canonical Casting | ✅ | `canonical_*` tables, `ingest_metadata` governance |
+| 3 | Feature Engineering | ✅ | `features_v1` (41,358 × 81 cols), zero leakage |
+| 4 | Modeling & Evaluation | ✅ | `xgboost_v3` — Recall 0.885, AUC-ROC 0.566 |
+| 5 | Explainability & Fairness | ✅ | Permutation importance, 19 fairness governance rows |
+| 6 | RAG Retrieval & LLM Wrapper | ✅ | 16 chunks, 40/30/30 hybrid, Section 12 contract |
+| 7 | API & Deployment | ✅ | 4 Plumber endpoints, `predictions_audit` table |
+| 8 | Observability & CI/CD | ✅ | Monitoring report, 6/6 policy checks, GitHub Actions |
+| 9 | Testing Matrix & Gating | ✅ | **71 tests, 0 failures** (55 unit + 16 integration) |
 
 ---
 
-## Technical Stack
+## 📊 Model Performance
 
-| Component | Tool | Why |
-|-----------|------|-----|
-| Language | R + SQL | Healthcare analytics |
-| Package manager | renv | Reproducible package lock |
-| Paths | here | Machine-independent paths |
-| Logging | logger | Structured logs |
-| Database engine | DuckDB + httpfs | Queries MinIO Parquet directly via SQL |
-| Cloud storage | MinIO (local Docker) → R2/B2 planned | Free, S3-compatible, zero code changes to swap |
-| Parquet IO | arrow | Reads/writes MEDS format |
-| S3 management | paws | Bucket operations from R |
-| Data synthesis | synthpop | Statistically faithful synthesis |
-| ML framework | tidymodels | Unified ML lifecycle |
-| Primary model | XGBoost (boost_tree) | High recall capability |
-| Baseline model | glmnet (logistic) | Interpretable comparison |
-| Evaluation | yardstick | Recall, AUC-ROC, PR-AUC |
-| Imbalance | ROSE | Synthetic oversampling (train only) |
-| RAG retrieval | TF-IDF + 40/30/30 hybrid | Base R, no extra packages, auditable |
-| LLM connector | ellmer | Gemini API (version-robust detection) |
-| API | plumber | REST endpoints, *_core() pattern |
+All versions preserved in `model_registry`. Final reference model: **xgboost v3**.
+
+| Version | Model | Recall | Precision | AUC-ROC | PR-AUC | Approved |
+|---------|-------|--------|-----------|---------|--------|----------|
+| v1 | glmnet | 0.895 | 0.208 | 0.568 | 0.233 | ✅ |
+| v1 | xgboost | 0.873 | 0.207 | 0.545 | 0.224 | ✅ |
+| v2 | glmnet | 0.877 | 0.216 | 0.574 | 0.234 | ✅ |
+| v2 | xgboost | 0.896 | 0.208 | 0.556 | 0.235 | ✅ |
+| v3 | glmnet | 0.878 | 0.216 | 0.568 | 0.236 | ✅ |
+| **v3** | **xgboost** | **0.885** | **0.212** | **0.566** | **0.244** | **✅** |
+
+> **`approved = TRUE` certifies Recall ≥ 0.85 only — not clinical utility.**  
+> See `docs/00_locked_decisions.md` Section 13 for the full governance clarification.
+
+### Permutation Importance (Top Features)
+
+| Feature | AUC Drop | Role |
+|---------|----------|------|
+| `n_prior_admissions` | 0.0432 | Dominant signal |
+| `pct_high_risk_dx` | 0.0111 | Real secondary signal |
+| All lab features | < 0.002 each | Marginal / noise |
+
+---
+
+## 🔍 Key Findings (Honestly Disclosed)
+
+This project surfaces its limitations rather than hiding them. That honesty is itself a technical and professional choice.
+
+**1. Signal ceiling from a 100-patient source**  
+The real MIMIC-IV MEDS demo contains 100 patients. AUC-ROC 0.566 reflects the genuine correlation available in that source — not a modeling failure. Documented in `docs/00_locked_decisions.md` Section 13.
+
+**2. Severity-linked synthesis required (Stage 1 v2)**  
+Initial synthesis generated clinical content and readmission timing independently, producing near-random AUC (0.55). A literature-grounded fix linked severity to both timing and diagnosis sampling — explicitly documented as engineered enrichment, not empirical discovery.
+
+**3. Fairness flag on race dimension**  
+87pp recall gap across racial subgroups detected and flagged. Most likely a noise artifact of thin representation in a 100-patient source. The pipeline correctly detected and flagged it regardless of cause.
+
+**4. Test-set-adaptive tuning disclosed**  
+Three diagnostic rounds used test-set AUC as the upstream decision signal. Disclosed explicitly; iteration stopped at round 3 for methodological integrity.
+
+---
+
+## 🛠️ Tech Stack
+
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| Language | R 4.5.2 + SQL | Core pipeline |
+| Package manager | renv | Reproducible environment lock |
+| Database engine | DuckDB + httpfs | SQL queries direct against Parquet in cloud storage |
+| Object storage | Backblaze B2 (S3-compatible) | 82 MB of Parquet data, zero egress cost in dev |
+| Data synthesis | synthpop | Statistically faithful patient synthesis |
+| ML framework | tidymodels | Unified model lifecycle |
+| Primary model | XGBoost | High recall, gradient boosting |
+| Baseline model | glmnet | Elastic net logistic regression |
+| Class balancing | ROSE | Synthetic oversampling (train only) |
+| RAG retrieval | TF-IDF + 40/30/30 hybrid | Base R, no extra packages, fully auditable |
+| LLM connector | ellmer | Gemini API (version-robust namespace detection) |
+| REST API | plumber | 4 endpoints, `*_core()` testable pattern |
+| Dashboard | Shiny + shinydashboard + Plotly | 5-tab interactive dashboard |
 | Monitoring | r_scripts/08_monitoring.R | PSI drift, governance completeness |
-| CI/CD | GitHub Actions | 9-step pipeline |
-| Policy check | infra/policies/model_policy_check.R | 6 governance invariants |
+| CI/CD | GitHub Actions | 9-step pipeline on every push |
+| Policy check | R-native (6 policies) | Governance invariant enforcement |
 | Testing | testthat | 71 tests (55 unit + 16 integration) |
 | Audit trail | uuid + digest | trace_id + data hashes |
+| Paths | here | Machine-independent, deployment-safe |
+| Logging | logger | Structured runtime logs |
 
 ---
 
-## Architecture Evolution Log
-
-### Stage 0 — Workspace & Environment Setup ✅
-
-**Date:** 2026-06-19
-
-Complete reproducible R environment: 14-folder scaffold, `renv`-locked package
-set (26 packages), `.Renviron`-based secrets management, provider-agnostic
-object storage layer (`global_config.R`). Pivoted to MinIO (local Docker) from
-Cloudflare R2 (known billing bug). Fixed console prompt-cascade install bug
-(`renv::install(prompt=FALSE)`).
-
----
-
-### Stage 1 — Synthetic MIMIC-IV Dataset ✅
-
-**Date:** 2026-06-19 – 2026-06-21 (v1 → v2)
-
-`r_scripts/01_synthetic_mimic_generator.R` — 5 sections. Reshapes 916,166 real
-MEDS events (100 patients) into 4 relational tables, synthesizes to 15,000
-patients via synthpop. v2 added a shared latent `is_severe` draw per visit
-(real severity rate 45.8%, computed empirically), linking timing (shorter gaps
-for severe visits via stratified real-gap pools + 0.85 literature-grounded
-nudge) and diagnosis sampling (40% high-risk codes in severe visits vs 5%).
-`is_severe` dropped before upload — never exposed downstream.
-
-**v2 outcome:** readmit_30d by severity: 17.7% vs. 22.8%. All 4 tables live
-in MinIO, verified queryable via DuckDB `httpfs`.
-
----
-
-### Stage 2 — Ingest & Canonical Casting ✅
-
-**Date:** 2026-06-20
-
-4 canonical schemas, `cast_and_validate()`, `check_referential_integrity()`,
-`write_ingest_metadata()`. PHI/ENV_MODE gate confirmed. Zero code changes on
-v2 re-run — interface contract validated. 4 `ingest_metadata` governance rows.
-
----
-
-### Stage 3 — Feature Engineering ✅
-
-**Date:** 2026-06-20 – 2026-06-21 (v1 → v3)
-
-**v1→v2:** Lab selection by raw event count picked 10 qualitative-only
-itemids (100% NA columns). Fixed: rank by `COUNT(numeric_value)`.
-
-**v2→v3:** `high_risk_dx_flag` (binary) saturated at 88% of visits, collapsing
-a real 42.9%-vs-9.4% per-code severity signal to a 2.9pp readmit gap. Added
-`pct_high_risk_dx` (continuous fraction). Confirmed as real secondary signal in
-Stage 5 permutation importance (0.0111 AUC drop).
-
-**Outcome:** `features_v1` — 41,358 rows × 81 cols, zero leakage.
-`feature_registry` — 4 idempotent, version-aware entries.
-
----
-
-### Stage 4 — Modeling & Evaluation ✅ (weak-signal finding disclosed)
-
-**Date:** 2026-06-21
-
-**Three diagnostic rounds:**
-
-Round 1 — ROSE crash: `is_deceased` excluded via `update_role()` but not
-from the actual data frame — must be explicitly `select()`-ed out.
-
-Round 2 — Near-random AUC (0.545–0.568): `glmnet` concentrated almost
-entirely on `n_prior_admissions`. XGBoost spread importance thin (top 3
-features = 9.3% of gain). Root cause: Stage 1's independent timing/severity
-generation → Stage 1 v2 severity fix.
-
-Round 3 — XGBoost noise-latching: `lab_224168_min` jumped to 30.6% of
-gain (v2) but ranked nowhere in glmnet — coincidental pattern from random
-number sequence shift. Regularized XGBoost (depth=4, min_n=30,
-sample_size=0.7, mtry=38, loss_reduction=1). AUC held steady (0.566 vs 0.556).
-
-**Final result — xgboost_v3 (reference model):**
-
-| Version | Model | Recall | AUC-ROC | PR-AUC |
-|---|---|---|---|---|
-| v3 | glmnet | 0.878 | 0.568 | 0.236 |
-| **v3** | **xgboost** | **0.885** | **0.566** | **0.244** |
-
-AUC-ROC 0.566 is a real, modest improvement over the 0.545 baseline — not
-strongly discriminative. Documented in `docs/00_locked_decisions.md` Section 13.
-`approved = TRUE` certifies Recall ≥ 0.85 floor only, not clinical utility.
-
-**Disclosed limitation:** Three rounds used test-set AUC as the upstream
-decision signal — a mild form of test-set-adaptive tuning. Iteration stopped
-at round 3 for this reason.
-
----
-
-### Stage 5 — Explainability & Clinical Validation ✅
-
-**Date:** 2026-06-22
-
-`r_scripts/05_explainability_fairness.R` — permutation importance (95 features,
-3 repeats each), pure-R per-patient explanations (training-median baseline,
-Windows `predcontrib` alignment workaround), `clinician_review_cases_v3.csv`
-(15 cases, 5 drivers each), fairness stratification.
-
-**Key findings:**
-
-Permutation importance confirmed two-signal structure:
-- `n_prior_admissions`: 0.0432 AUC drop (dominant)
-- `pct_high_risk_dx`: 0.0111 AUC drop (real secondary — Stage 3 v3 fix confirmed working)
-- All labs: < 0.002 each (marginal / noise)
-
-Fairness: Gender (1.2pp recall gap) — clear. Insurance (0.7pp) — clear.
-Race (87pp, 13.0% to 100%) — **flagged**. Most likely noise artifact of thin
-racial representation in the 100-patient source, correctly detected regardless
-of cause.
-
-`fairness_reports` governance table: 19 rows.
-
----
-
-### Stage 6 — RAG Retrieval & LLM Wrapper ✅
-
-**Date:** 2026-06-23
-
-8 synthetic clinical guideline documents (heart failure, COPD, CKD, sepsis,
-acute MI + 3 general protocols) → 16 chunks → 241-term TF-IDF matrix.
-
-**40/30/30 hybrid retrieval:**
-- 40% TF-IDF cosine similarity (full text)
-- 30% Keyword density (exact term frequency)
-- 30% ICD tag overlap (structured metadata)
-
-Validated: HF+COPD patient → HF protocol #1 (0.412), COPD prevention #2
-(0.278), high-risk criteria #3 (0.262). Clinically appropriate.
-
-`generate_discharge_summary()` returns Section 12 governance contract:
-`{summary_text, citations, retrieval_debug, trace_id, model_version, index_version}`.
-ellmer version-robust detection (scans namespace for `chat_gemini` OR
-`chat_google_gemini`). Template fallback for offline/rate-limited environments.
-
-`rag_index_metadata` + `llm_call_log` governance tables live.
-
----
-
-### Stage 7 — API & Deployment ✅
-
-**Date:** 2026-06-23
-
-`api/plumber.R` — 4 Plumber REST endpoints. `*_core()` pattern: business
-logic in plain R functions, route decorators as thin wrappers — testable
-without running an HTTP server.
-
-`write_predictions_audit()` — 7th and final Section 12 governance write
-function. One row per `/predict` call, storing hashes only (never raw
-feature values or patient identifiers).
-
-Verification: three distinct trace_ids, `predicted_risk = 0.7934` matching
-Stage 5 exactly, `predictions_audit` row written. Gemini HTTP 429 confirmed
-real API connectivity; template fallback handled gracefully.
-
----
-
-### Stage 8 — Observability & CI/CD ✅
-
-**Date:** 2026-06-23 – 2026-06-24
-
-`r_scripts/08_monitoring.R` — reads all 7 governance tables, computes model
-health + PSI drift + fairness + LLM stats + governance completeness, writes
-timestamped markdown to `logs/`. PSI framework-ready; reports
-INSUFFICIENT_DATA when N < 30 rather than a misleadingly precise number.
-
-`infra/policies/model_policy_check.R` — 6 policy checks (approved model,
-recall gate, leakage notes, decisions doc sections, metadata JSON, script
-existence). All 6 passed.
-
-`.github/workflows/ci.yml` — 9-step GitHub Actions pipeline. Policy 4
-heading-format mismatch fixed (dual regex: `"## 12\\."` OR `"Section 12"`).
-
-**Monitoring outcome:** HEALTHY. Drift: INSUFFICIENT_DATA (N=1, min 30).
-Race: flagged (87pp). LLM fallback: 100% (all calls pre-key-rename).
-
----
-
-### Stage 9 — Testing Matrix & Gating ✅ — PIPELINE COMPLETE
-
-**Date:** 2026-06-24 – 2026-06-25
-
-**Test files:**
-- `tests/unit/test_schema_validation.R` — 7 tests
-- `tests/unit/test_api_core.R` — 8 tests
-- `tests/unit/test_rag_retrieval.R` — 5 tests
-- `tests/unit/test_governance_helpers.R` — 5 tests
-- `tests/integration/test_pipeline_e2e.R` — 5 tests
-
-**Final result: 55 unit + 16 integration = 71 tests, 0 failures.**
-
-**Three problems solved:**
-1. `testthat` not installed → `install.packages("testthat")` + `renv::snapshot()`
-2. `test_dir()` changes WD → `setup.R` with `setwd(here::here())`
-3. Windows DuckDB file-locking on rapid open/close → connection singleton
-   pattern (open once in `setup.R`, override `get_db_connection()` globally,
-   `close_db_connection()` no-op, `withr::defer()` teardown)
-
-**Complication:** Files that `source(global_config.R)` overwrite singleton
-overrides → `.restore_test_singleton()` called after each such source().
-
----
-
-## Governance Layer (Complete — All 8 Tables Active)
-
-All in local DuckDB (`data/local_query_cache.duckdb`):
-
-| Table | Rows | Stage |
-|---|---|---|
-| `ingest_metadata` | 4+ | 2 |
-| `feature_registry` | 4 | 3 |
-| `model_registry` | 6 | 4 |
-| `fairness_reports` | 19 | 5 |
-| `rag_chunks` | 16 | 6 |
-| `rag_index_metadata` | 1+ | 6 |
-| `llm_call_log` | 3+ | 6–7 |
-| `predictions_audit` | 1+ | 7 |
-
----
-
-## Model Development
-
-### Current Best: xgboost v3
-
-Recall 0.885 · Precision 0.212 · AUC-ROC 0.566 · PR-AUC 0.244 at threshold 0.58.
-See `docs/00_locked_decisions.md` Section 13 for the full governance
-clarification. `approved = TRUE` certifies Recall ≥ 0.85 floor only — not
-clinical utility. This is an architecture-validation model on a 100-patient
-synthetic source, not a deployment-ready classifier.
-
-### Artifacts
-
+## ⚡ API Reference
+
+Base URL: `https://r-healthcare-readmission-production.up.railway.app`
+
+### `GET /health`
+```json
+{
+  "status": "ok",
+  "model_version": "v3",
+  "index_version": "v1",
+  "timestamp": "2026-07-04T07:00:26",
+  "endpoints": ["/health", "/predict", "/explain", "/rag/summary"]
+}
 ```
-models/artifacts/
-  glmnet_{v1,v2,v3}.rds
-  xgboost_{v1,v2,v3}.rds
-  recipe_{v1,v2,v3}.rds
-  metadata_{glmnet,xgboost}_{v1,v2,v3}.json
-  fairness_report_xgboost_v3.md
-  clinician_review_cases_v3.csv
+
+### `POST /predict?hadm_id={id}`
+Returns risk score, tier, top feature drivers, and `trace_id`. Writes to `predictions_audit`.
+
+```json
+{
+  "trace_id": "485a24ad-53db-4fbb-91f5-847f398e9359",
+  "model_version": "v3",
+  "predicted_risk": 0.6921,
+  "risk_tier": "high",
+  "threshold": 0.58,
+  "flagged": true,
+  "top_drivers": "n_prior_admissions = -0.48 (+0.00 below median) | ...",
+  "disclaimer": "FOR PORTFOLIO DEMONSTRATION ONLY — NOT FOR CLINICAL USE."
+}
+```
+
+### `POST /explain?hadm_id={id}`
+Returns structured per-feature explanation with delta vs. training median.
+
+### `POST /rag/summary?hadm_id={id}&icd_families={codes}`
+Returns RAG-cited discharge recommendation. Example: `icd_families=I50,J44` (HF + COPD).
+
+```json
+{
+  "trace_id": "...",
+  "summary": "DISCHARGE RECOMMENDATION: Patient presents with 69.2% predicted 30-day readmission risk...",
+  "citations": ["hf_discharge_protocol", "copd_readmission_prevention", "high_risk_readmission_criteria"]
+}
 ```
 
 ---
 
-## RAG System
+## 🗄️ Governance Layer
 
-8 synthetic guideline docs · 16 chunks · 241-term TF-IDF vocabulary.
-40/30/30 hybrid: TF-IDF cosine (40%) / keyword density (30%) / ICD tag overlap (30%).
-ellmer → Gemini 2.0 Flash. Template fallback when API unavailable.
-Every call logged to `llm_call_log` (request_hash + response_hash).
+All 8 tables live in local DuckDB (`data/local_query_cache.duckdb`):
 
----
-
-## Testing
-
-71 tests (55 unit + 16 integration), 0 failures.
-Run: `testthat::test_dir("tests/unit")` and `testthat::test_dir("tests/integration")`.
-CI: `.github/workflows/ci.yml` runs on every push to `main`.
-
-**Windows DuckDB pattern (documented):** Tests use a connection singleton
-in `tests/unit/setup.R` to prevent OS-level file-lock conflicts between
-rapid sequential connect/disconnect cycles.
+| Table | Rows | Stage | Design Pattern |
+|-------|------|-------|----------------|
+| `ingest_metadata` | 4+ | 2 | Append-only; PHI gate |
+| `feature_registry` | 4 | 3 | Idempotent by (feature_name, version) |
+| `model_registry` | 6 | 4 | Append-only; all training runs preserved |
+| `fairness_reports` | 19 | 5 | Append-only; one row per subgroup |
+| `rag_chunks` | 16 | 6 | Overwrite on index rebuild |
+| `rag_index_metadata` | 1+ | 6 | Append-only; each rebuild traceable |
+| `llm_call_log` | 8+ | 6–7 | Append-only; request/response as hashes |
+| `predictions_audit` | 15+ | 7 | Append-only; patient_id and input as hashes |
 
 ---
 
-## Key Operational Rules
-
-1. `docker ps` before any pipeline script — `docker compose up -d` if `healthcare-rag-minio` absent
-2. `GOOGLE_API_KEY` in `.Renviron` (not `GEMINI_API_KEY`) for ellmer
-3. `renv::install(prompt=FALSE)` for package installs — never paste multi-group blocks interactively
-4. Windows DuckDB in tests: connection singleton in `setup.R`; `gc(); gc(); Sys.sleep(0.5)` in `close_db_connection()` for non-test use
-5. `is_deceased` must be explicitly `select()`-ed out of modeling data frames — `update_role()` alone does not remove it
-
----
-
-## Progress Tracker
-
-### Completed ✅ — ALL STAGES
-
-- [x] Stage 0 — Workspace, MinIO, global_config.R
-- [x] Stage 1 — Synthetic dataset v2 (15,000 patients, severity-linked)
-- [x] Stage 2 — Canonical casting, ingest_metadata
-- [x] Stage 3 — Features v3: lab fix, pct_high_risk_dx
-- [x] Stage 4 — xgboost_v3, 3 diagnostic rounds, honest AUC 0.566 disclosed
-- [x] Stage 5 — Permutation importance, fairness 19 rows, clinician CSV
-- [x] Stage 6 — TF-IDF RAG, 40/30/30 retrieval, Section 12 contract
-- [x] Stage 7 — 4 REST endpoints, predictions_audit, trace_ids verified
-- [x] Stage 8 — Monitoring HEALTHY, 6/6 policy checks, GitHub Actions CI
-- [x] Stage 9 — 71 tests, 0 failures, Windows DuckDB singleton documented
-
----
-
-## Current Status
+## 🧪 Testing
 
 ```
-Status:   ✅ COMPLETE — ALL 9 STAGES VERIFIED
-Tests:    71 passing (55 unit + 16 integration), 0 failures
-Model:    xgboost_v3 — Recall 0.885, AUC-ROC 0.566 (honestly disclosed)
-API:      4 endpoints live, all governance tables active
-CI/CD:    GitHub Actions 9-step pipeline, 6/6 policy checks pass
-Next:     Phase 2 — real credentialed MIMIC-IV data, clinical validation
-Dashboard: dashboard/app.R — Shiny + Plotly, 5 tabs, live *_core() calls
+tests/
+├── unit/
+│   ├── setup.R                     ← DuckDB singleton + WD fix
+│   ├── test_schema_validation.R    ← 7 tests
+│   ├── test_api_core.R             ← 8 tests
+│   ├── test_rag_retrieval.R        ← 5 tests
+│   └── test_governance_helpers.R   ← 5 tests
+└── integration/
+    ├── setup.R
+    └── test_pipeline_e2e.R         ← 5 tests
 ```
+
+**Total: 71 tests | 0 failures**
+
+```r
+# Run all tests
+testthat::test_dir("tests/unit")
+testthat::test_dir("tests/integration")
+```
+
+> **Windows DuckDB note:** Tests use a connection singleton pattern in `setup.R` to prevent OS file-lock conflicts on rapid sequential connect/disconnect cycles.
+
+---
+
+## 🚀 Run Locally
+
+### Prerequisites
+- R 4.5.2 · RStudio · Docker Desktop · Git
+
+### Setup
+
+```bash
+git clone https://github.com/Kayterthesly/r-healthcare-readmission.git
+cd r-healthcare-readmission
+```
+
+```r
+# Restore all packages
+renv::restore(prompt = FALSE)
+
+# Configure secrets
+file.edit(".Renviron")
+# Add: CLOUD_ACCESS_KEY_ID, CLOUD_SECRET_ACCESS_KEY, CLOUD_ENDPOINT, etc.
+```
+
+```bash
+# Start MinIO (local object storage)
+docker compose up -d
+```
+
+```r
+# Run the full pipeline (Stages 1–9 in order)
+source("r_scripts/01_synthetic_mimic_generator.R")
+source("r_scripts/02_ingest_and_cast.R")
+source("r_scripts/03_features.R")
+source("r_scripts/04_train_models.R")
+source("r_scripts/05_explainability_fairness.R")
+source("rag/rag_indexing.R")
+
+# Start the API (separate R session)
+source("api/run_api.R")
+
+# Launch local dashboard
+shiny::runApp("dashboard/app.R", launch.browser = TRUE)
+```
+
+### Storage Provider Swap
+Moving from local MinIO to Backblaze B2 (or AWS S3, Cloudflare R2) requires editing **6 lines** in `.Renviron` and **zero lines** of pipeline code.
+
+---
+
+## ☁️ Deployment
+
+| Layer | Platform | Config |
+|-------|----------|--------|
+| Object storage | Backblaze B2 | S3-compatible, 9 Parquet files |
+| REST API | Railway (Docker) | `Dockerfile` + `railway.toml` |
+| Dashboard | shinyapps.io | Pre-computed bundle + live API calls |
+
+### Deploy API to Railway
+```bash
+# Railway auto-deploys on push to main
+git push origin main
+```
+
+### Deploy Dashboard to shinyapps.io
+```r
+rsconnect::deployApp(
+  appDir  = "dashboard",
+  appName = "healthcare-readmission-pipeline",
+  account = "your-shinyapps-account"
+)
+```
+
+---
+
+## 📁 Repository Structure
+
+```
+r-healthcare-readmission/
+├── global_config.R                    ← Provider-agnostic DuckDB + B2 config
+├── renv.lock                          ← Full package lock (reproducible)
+├── Dockerfile                         ← Railway deployment
+├── railway.toml                       ← Railway config
+├── .github/workflows/ci.yml          ← 9-step GitHub Actions CI
+│
+├── r_scripts/
+│   ├── 01_synthetic_mimic_generator.R ← 5-section synthesis (v2, severity-linked)
+│   ├── 02_ingest_and_cast.R
+│   ├── 03_features.R                  ← DuckDB SQL on 9M-row lab data
+│   ├── 04_train_models.R              ← XGBoost + glmnet (3 diagnostic rounds)
+│   ├── 05_explainability_fairness.R   ← Permutation importance + fairness
+│   ├── 08_monitoring.R                ← Health report across all governance tables
+│   └── governance_helpers.R           ← 7 write functions (Section 12)
+│
+├── schemas/canonical_omop_schemas.R   ← 4 schemas + validation
+├── rag/
+│   ├── guidelines/                    ← 8 synthetic clinical guideline docs
+│   ├── rag_indexing.R                 ← TF-IDF index builder
+│   ├── llm_wrapper.R                  ← generate_discharge_summary()
+│   └── tfidf_index_v1.rds             ← 16 chunks × 241 terms
+│
+├── api/
+│   ├── plumber.R                      ← 4 REST endpoints (*_core() pattern)
+│   └── run_api.R
+│
+├── dashboard/
+│   ├── app.R                          ← shinyapps.io deployment version
+│   └── data/deploy_bundle.rds         ← Pre-computed governance snapshot
+│
+├── infra/policies/model_policy_check.R ← 6 governance policies
+├── models/artifacts/                   ← All .rds + metadata JSON (v1/v2/v3)
+├── tests/                              ← 71 tests (testthat)
+├── docs/
+│   ├── README.md
+│   └── 00_locked_decisions.md         ← 13 sections of governance decisions
+└── notes/                             ← Stage-by-stage handwritten notes (Stage 0–9)
+```
+
+---
+
+## 👤 Author
+
+**Kingsley Akenu** — Data Analyst → Data Scientist  
+📍 Lagos, Nigeria | 🐦 [@Kayterthesly](https://twitter.com/Kayterthesly) | KAIZEN 改善
+
+> *"A model that says AUC 0.566 with full documentation of why and what would fix it is more credible than one that says AUC 0.85 with unexplained methodology."*
+
+---
+
+<div align="center">
+
+**Built with KAIZEN (改善) — continuous, honest improvement**
+
+[![GitHub](https://img.shields.io/badge/View_on-GitHub-181717?style=for-the-badge&logo=github)](https://github.com/Kayterthesly/r-healthcare-readmission)
+[![Live Demo](https://img.shields.io/badge/Live-Dashboard-4E9AF1?style=for-the-badge&logo=shiny)](https://e9yw5n-kayterthesly.shinyapps.io/healthcare-readmission-pipeline/)
+[![API](https://img.shields.io/badge/Live-API-0B0D0E?style=for-the-badge&logo=railway)](https://r-healthcare-readmission-production.up.railway.app/health)
+
+</div>
