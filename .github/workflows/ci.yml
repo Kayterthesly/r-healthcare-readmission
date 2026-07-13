@@ -47,18 +47,17 @@ jobs:
         run: |
           Rscript -e "
             if (!requireNamespace('lintr', quietly=TRUE)) install.packages('lintr')
-            dirs   <- c('r_scripts', 'rag', 'api', 'schemas')
-            files  <- unlist(lapply(dirs[dir.exists(dirs)], list.files,
-                             pattern='\\\\.R$', full.names=TRUE))
-            files  <- c(files, 'global_config.R')
-            files  <- files[file.exists(files)]
-            lints  <- lintr::lint_files(files)
+            dirs  <- c('r_scripts', 'rag', 'api', 'schemas')
+            files <- unlist(lapply(dirs[dir.exists(dirs)], list.files,
+                           pattern='\\\\.R$', full.names=TRUE))
+            files <- c(files, 'global_config.R')
+            files <- files[file.exists(files)]
+            lints <- unlist(lapply(files, lintr::lint))
             n_warn <- length(lints)
             if (n_warn > 0) {
-              message(n_warn, ' lint warning(s) found (non-blocking in this pipeline):')
-              print(lints)
+              message(n_warn, ' lint warning(s) (non-blocking):')
             } else {
-              message('Lint check: 0 issues found across ', length(files), ' files.')
+              message('Lint check: 0 issues across ', length(files), ' files.')
             }
           "
 
