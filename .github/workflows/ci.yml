@@ -138,9 +138,15 @@ jobs:
           Rscript -e "
             doc <- 'docs/00_locked_decisions.md'
             if (!file.exists(doc)) stop('Policy check FAIL: locked decisions doc missing')
-            content      <- paste(readLines(doc, warn=FALSE), collapse='\n')
-            required_sec <- c('Section 4', 'Section 12', 'Section 13')
-            missing      <- required_sec[!sapply(required_sec, function(s) grepl(s, content, fixed=TRUE))]
+            content <- paste(readLines(doc, warn=FALSE), collapse='\n')
+            has_sec4  <- grepl('Section 4',  content, fixed=TRUE)
+            has_sec12 <- grepl('## 12\\.', content) || grepl('Section 12', content, fixed=TRUE)
+            has_sec13 <- grepl('## 13\\.', content) || grepl('Section 13', content, fixed=TRUE)
+            missing <- c(
+              if (!has_sec4)  'Section 4'  else NULL,
+              if (!has_sec12) 'Section 12' else NULL,
+              if (!has_sec13) 'Section 13' else NULL
+            )
             if (length(missing) > 0) stop('Policy check FAIL: missing sections: ', paste(missing, collapse=', '))
             message('Policy check PASS: all required sections present in locked decisions doc')
           "
