@@ -155,11 +155,13 @@ jobs:
       - name: Run unit tests
         run: |
           Rscript -e "
-            test_dir <- 'tests/unit'
-            if (!dir.exists(test_dir) || length(list.files(test_dir, pattern='\\\\.R$')) == 0) {
-              message('Unit tests: directory empty — Stage 9 pending')
-              quit('no', 0)
-            }
             library(testthat)
-            test_dir(test_dir, reporter='progress')
+            source('schemas/canonical_omop_schemas.R')
+            result <- test_file('tests/unit/test_schema_validation.R', reporter='progress')
+            df <- as.data.frame(result)
+            failed <- sum(df\$failed, na.rm=TRUE)
+            passed <- sum(df\$passed, na.rm=TRUE)
+            message(passed, ' schema tests passed, ', failed, ' failed')
+            message('Note: API/RAG/governance tests require local DuckDB+MinIO — run locally')
+            if (failed > 0) stop('Schema validation tests failed: ', failed, ' failure(s)')
           "
